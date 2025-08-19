@@ -1,0 +1,46 @@
+name: CI with Failure Handling
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: success
+        run: echo this will work
+
+      - name: Run unit tests (with potential failure)
+        run: npm test -- --coverage # This step might fail if tests don't pass
+        continue-on-error: true # Allow subsequent steps to run even if tests fail
+
+      - name: Generate test report (if tests ran)
+        if: success() || failure() # Run this step regardless of unit test outcome
+        run: echo "Generating test report..." && ls -la # Replace with actual report generation
+
+      - name: Build application
+        run: npm run build
+
+      - name: Deploy to staging (only if previous steps succeeded)
+        if: success() # Only deploy if all preceding steps were successful
+        run: echo "Deploying to staging..."
+
+  # success()
+  # failure()
+  # always()
+  # canceled()
+  
+  notify-on-failure:
+    runs-on: ubuntu-latest
+    needs: build-and-test # This job depends on 'build-and-test'
+    if: failure() # Only run this job if 'build-and-test' failed
+    steps:
+      - name: Send failure notification
+        run: echo "Build and test workflow failed! Please investigate."
+        # Add actions here for sending email, Slack notification, etc.
